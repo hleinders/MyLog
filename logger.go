@@ -18,17 +18,17 @@ var green = color.New(color.FgGreen).SprintFunc()
 
 // Log is a type for structured message logging
 type Log struct {
-	stdVar       *log.Logger
-	infoVar      *log.Logger
-	debugVar     *log.Logger
-	warningVar   *log.Logger
-	errorVar     *log.Logger
-	panicVar     *log.Logger
-	enableBuffer bool
-	bufferData   []string
-	verbose      bool
-	debug        bool
-	color        bool
+	stdVar           *log.Logger
+	infoVar          *log.Logger
+	debugVar         *log.Logger
+	warningVar       *log.Logger
+	errorVar         *log.Logger
+	panicVar         *log.Logger
+	flagEnableBuffer bool
+	bufferData       []string
+	flagVerbose      bool
+	flagDebug        bool
+	flagColor        bool
 }
 
 // LogInit is a member function for Log
@@ -44,7 +44,7 @@ func (l *Log) Init(stdOut, stdErr io.Writer) {
 	l.errorVar = log.New(stdErr, "ERROR: ", stdFlags)
 	l.panicVar = log.New(os.Stderr, "PANIC: ", stdFlags)
 
-	l.enableBuffer = false
+	l.flagEnableBuffer = false
 }
 
 func (l *Log) SetFlags(flags int) {
@@ -57,7 +57,7 @@ func (l *Log) SetFlags(flags int) {
 }
 
 func (l *Log) SetColorPrefix() {
-	if l.color {
+	if l.flagColor {
 		l.infoVar.SetPrefix(green("INFO:  "))
 		l.warningVar.SetPrefix(yellow("WARN:  "))
 		l.debugVar.SetPrefix(red("DEBUG: "))
@@ -81,79 +81,97 @@ func (l *Log) SetInteractive() {
 }
 
 func (l *Log) EnableBuffer() {
-	l.enableBuffer = true
+	l.flagEnableBuffer = true
 }
 
 func (l *Log) DisableBuffer() {
-	l.enableBuffer = false
+	l.flagEnableBuffer = false
 }
 
 func (l *Log) SetVerbose(b bool) {
-	l.verbose = b
+	l.flagVerbose = b
 }
 
 func (l *Log) SetDebug(b bool) {
-	l.debug = b
+	l.flagDebug = b
 }
 
 func (l *Log) SetColor(b bool) {
-	l.color = b
+	l.flagColor = b
 }
 
+// Buffer Handling
 func (l *Log) AddBuffer(format string, v ...interface{}) {
-	l.bufferData = append(l.bufferData, fmt.Sprintf(format, v...))
+	if l.flagEnableBuffer {
+		l.bufferData = append(l.bufferData, fmt.Sprintf(format, v...))
+	}
 }
 
 func (l *Log) GetBuffer() string {
 	return strings.Join(l.bufferData, "\n")
 }
 
-func (l *Log) Log(format string, v ...interface{}) {
+// Intrinsic functions
+func (l *Log) log(format string, v ...interface{}) {
 	l.stdVar.Printf(format, v...)
+	l.AddBuffer(format, v...)
 }
 
-func (l *Log) Info(format string, v ...interface{}) {
+func (l *Log) info(format string, v ...interface{}) {
 	l.infoVar.Printf(green(format), v...)
+	l.AddBuffer(format, v...)
 }
 
-func (l *Log) Warn(format string, v ...interface{}) {
+func (l *Log) warn(format string, v ...interface{}) {
 	l.warningVar.Printf(yellow(format), v...)
+	l.AddBuffer(format, v...)
 }
 
-func (l *Log) internalDebug(format string, v ...interface{}) {
+func (l *Log) debug(format string, v ...interface{}) {
 	l.debugVar.Printf(red(format), v...)
+	l.AddBuffer(format, v...)
 }
 
-func (l *Log) Error(format string, v ...interface{}) {
+func (l *Log) error(format string, v ...interface{}) {
 	l.errorVar.Printf(red(format), v...)
+	l.AddBuffer(format, v...)
 }
 
+// User functions
 func (l *Log) Panic(format string, v ...interface{}) {
 	l.panicVar.Printf(red(format), v...)
 }
 
 func (l *Log) Standard(format string, v ...interface{}) {
-	l.Log(format, v...)
+	l.log(format, v...)
 }
 
 func (l *Log) StandardInfo(format string, v ...interface{}) {
-	l.Info(format, v...)
+	l.info(format, v...)
 }
 
 func (l *Log) Verbose(format string, v ...interface{}) {
-	if l.verbose {
-		l.Log(format, v...)
+	if l.flagVerbose {
+		l.log(format, v...)
 	}
 }
 
 func (l *Log) VerboseInfo(format string, v ...interface{}) {
-	if l.verbose {
-		l.Info(format, v...)
+	if l.flagVerbose {
+		l.info(format, v...)
 	}
 }
 
 func (l *Log) Debug(format string, v ...interface{}) {
-	if l.debug {
-		l.internalDebug(format, v...)
+	if l.flagDebug {
+		l.debug(format, v...)
 	}
+}
+
+func (l *Log) Warn(format string, v ...interface{}) {
+	l.warn(format, v...)
+}
+
+func (l *Log) Error(format string, v ...interface{}) {
+	l.error(format, v...)
 }
