@@ -10,6 +10,16 @@ import (
 	"github.com/fatih/color"
 )
 
+type bitset uint8
+
+const (
+	LgVerbose  bitset = 1 << iota // set verbose logging
+	LgDebug                       // set debug logging
+	LgColor                       // set color mode
+	LgBuffer                      // enables log buffer
+	LgStandard = 0
+)
+
 // color funcs
 // var bold = color.New(color.Bold).SprintFunc()
 var red = color.New(color.FgRed).SprintFunc()
@@ -18,22 +28,19 @@ var green = color.New(color.FgGreen).SprintFunc()
 
 // Log is a type for structured message logging
 type Log struct {
-	stdVar           *log.Logger
-	infoVar          *log.Logger
-	debugVar         *log.Logger
-	warningVar       *log.Logger
-	errorVar         *log.Logger
-	panicVar         *log.Logger
-	flagEnableBuffer bool
-	bufferData       []string
-	flagVerbose      bool
-	flagDebug        bool
-	flagColor        bool
+	stdVar       *log.Logger
+	infoVar      *log.Logger
+	debugVar     *log.Logger
+	warningVar   *log.Logger
+	errorVar     *log.Logger
+	panicVar     *log.Logger
+	bufferData   []string
+	modeRegister bitset
 }
 
 // LogInit is a member function for Log
 // Inits all logging to given file handle except panic
-// Default mode is "no color"
+// Default mode is "silent" and "no color"
 func (l *Log) Init(stdOut, stdErr io.Writer) {
 	stdFlags := log.Ldate | log.Ltime | log.Lmsgprefix
 
@@ -44,7 +51,7 @@ func (l *Log) Init(stdOut, stdErr io.Writer) {
 	l.errorVar = log.New(stdErr, "ERROR: ", stdFlags)
 	l.panicVar = log.New(os.Stderr, "PANIC: ", stdFlags)
 
-	l.flagEnableBuffer = false
+	l.modeRegister = LgStandard
 }
 
 func (l *Log) SetFlags(flags int) {
@@ -57,7 +64,7 @@ func (l *Log) SetFlags(flags int) {
 }
 
 func (l *Log) SetColorPrefix() {
-	if l.flagColor {
+	if l.modeHas(LgColor) {
 		l.infoVar.SetPrefix(green("INFO:  "))
 		l.warningVar.SetPrefix(yellow("WARN:  "))
 		l.debugVar.SetPrefix(red("DEBUG: "))
@@ -75,34 +82,62 @@ func (l *Log) SetOutput(stdOut, stdErr io.Writer) {
 	l.panicVar.SetOutput(stdErr)
 }
 
+func (l *Log) modeSet(flag bitset) {
+	l.modeRegister = l.modeRegister | flag
+}
+
+func (l *Log) modeClear(flag bitset) {
+	l.modeRegister = l.modeRegister &^ flag
+}
+
+// func (l *Log) modeToggle(flag bitset) {
+// 	l.modeRegister = l.modeRegister ^ flag
+// }
+
+func (l *Log) modeHas(flag bitset) bool {
+	return l.modeRegister&flag != 0
+}
+
 func (l *Log) SetInteractive() {
 	l.SetFlags(log.Lmsgprefix)
 	l.SetColorPrefix()
 }
 
 func (l *Log) EnableBuffer() {
-	l.flagEnableBuffer = true
+	l.modeSet(LgBuffer)
 }
 
 func (l *Log) DisableBuffer() {
-	l.flagEnableBuffer = false
+	l.modeClear(LgBuffer)
 }
 
 func (l *Log) SetVerbose(b bool) {
-	l.flagVerbose = b
+	if b {
+		l.modeSet(LgVerbose)
+	} else {
+		l.modeClear(LgVerbose)
+	}
 }
 
 func (l *Log) SetDebug(b bool) {
-	l.flagDebug = b
+	if b {
+		l.modeSet(LgDebug)
+	} else {
+		l.modeClear(LgDebug)
+	}
 }
 
 func (l *Log) SetColor(b bool) {
-	l.flagColor = b
+	if b {
+		l.modeSet(LgColor)
+	} else {
+		l.modeClear(LgColor)
+	}
 }
 
 // Buffer Handling
 func (l *Log) AddBuffer(format string, v ...interface{}) {
-	if l.flagEnableBuffer {
+	if l.modeHas(LgBuffer) {
 		l.bufferData = append(l.bufferData, fmt.Sprintf(format, v...))
 	}
 }
@@ -151,19 +186,19 @@ func (l *Log) StandardInfo(format string, v ...interface{}) {
 }
 
 func (l *Log) Verbose(format string, v ...interface{}) {
-	if l.flagVerbose {
+	if l.modeHas(LgVerbose) {
 		l.log(format, v...)
 	}
 }
 
 func (l *Log) VerboseInfo(format string, v ...interface{}) {
-	if l.flagVerbose {
+	if l.modeHas(LgVerbose) {
 		l.info(format, v...)
 	}
 }
 
 func (l *Log) Debug(format string, v ...interface{}) {
-	if l.flagDebug {
+	if l.modeHas(LgDebug) {
 		l.debug(format, v...)
 	}
 }
