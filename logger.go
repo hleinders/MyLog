@@ -10,10 +10,10 @@ import (
 	"github.com/fatih/color"
 )
 
-type bitset uint8
+type BitSet uint8
 
 const (
-	LgVerbose  bitset = 1 << iota // set verbose logging
+	LgVerbose  BitSet = 1 << iota // set verbose logging
 	LgDebug                       // set debug logging
 	LgColor                       // set color mode
 	LgBuffer                      // enables log buffer
@@ -21,7 +21,7 @@ const (
 )
 
 // color funcs
-// var bold = color.New(color.Bold).SprintFunc()
+var bold = color.New(color.Bold).SprintFunc()
 var red = color.New(color.FgRed).SprintFunc()
 var yellow = color.New(color.FgYellow).SprintFunc()
 var green = color.New(color.FgGreen).SprintFunc()
@@ -35,7 +35,7 @@ type Log struct {
 	errorVar     *log.Logger
 	panicVar     *log.Logger
 	bufferData   []string
-	modeRegister bitset
+	modeRegister BitSet
 }
 
 // LogInit is a member function for Log
@@ -82,22 +82,24 @@ func (l *Log) SetOutput(stdOut, stdErr io.Writer) {
 	l.panicVar.SetOutput(stdErr)
 }
 
-func (l *Log) modeSet(flag bitset) {
+// internal mode handling functions
+func (l *Log) modeSet(flag BitSet) {
 	l.modeRegister = l.modeRegister | flag
 }
 
-func (l *Log) modeClear(flag bitset) {
+func (l *Log) modeClear(flag BitSet) {
 	l.modeRegister = l.modeRegister &^ flag
 }
 
-// func (l *Log) modeToggle(flag bitset) {
-// 	l.modeRegister = l.modeRegister ^ flag
-// }
+func (l *Log) modeToggle(flag BitSet) {
+	l.modeRegister = l.modeRegister ^ flag
+}
 
-func (l *Log) modeHas(flag bitset) bool {
+func (l *Log) modeHas(flag BitSet) bool {
 	return l.modeRegister&flag != 0
 }
 
+// Exposed mode handling functions
 func (l *Log) SetInteractive() {
 	l.SetFlags(log.Lmsgprefix)
 	l.SetColorPrefix()
@@ -111,27 +113,31 @@ func (l *Log) DisableBuffer() {
 	l.modeClear(LgBuffer)
 }
 
-func (l *Log) SetVerbose(b bool) {
-	if b {
-		l.modeSet(LgVerbose)
-	} else {
-		l.modeClear(LgVerbose)
-	}
+func (l *Log) SetMode(f BitSet) {
+	l.modeSet(f)
 }
 
-func (l *Log) SetDebug(b bool) {
-	if b {
-		l.modeSet(LgDebug)
-	} else {
-		l.modeClear(LgDebug)
-	}
+func (l *Log) ClearMode(f BitSet) {
+	l.modeClear(f)
 }
 
-func (l *Log) SetColor(b bool) {
+func (l *Log) ToggleMode(f BitSet) {
+	l.modeToggle(f)
+}
+
+func (l *Log) GetMode() BitSet {
+	return l.modeRegister
+}
+
+func (l *Log) HasMode(f BitSet) bool {
+	return l.modeHas(f)
+}
+
+func (l *Log) SetModeBool(f BitSet, b bool) {
 	if b {
-		l.modeSet(LgColor)
+		l.modeSet(f)
 	} else {
-		l.modeClear(LgColor)
+		l.modeClear(f)
 	}
 }
 
@@ -152,8 +158,18 @@ func (l *Log) log(format string, v ...interface{}) {
 	l.AddBuffer(format, v...)
 }
 
+func (l *Log) stdbold(format string, v ...interface{}) {
+	l.infoVar.Printf(bold(format), v...)
+	l.AddBuffer(format, v...)
+}
+
 func (l *Log) info(format string, v ...interface{}) {
 	l.infoVar.Printf(green(format), v...)
+	l.AddBuffer(format, v...)
+}
+
+func (l *Log) infobold(format string, v ...interface{}) {
+	l.infoVar.Printf(bold(green(format)), v...)
 	l.AddBuffer(format, v...)
 }
 
@@ -181,8 +197,16 @@ func (l *Log) Standard(format string, v ...interface{}) {
 	l.log(format, v...)
 }
 
+func (l *Log) Bold(format string, v ...interface{}) {
+	l.stdbold(format, v...)
+}
+
 func (l *Log) StandardInfo(format string, v ...interface{}) {
 	l.info(format, v...)
+}
+
+func (l *Log) BoldInfo(format string, v ...interface{}) {
+	l.infobold(format, v...)
 }
 
 func (l *Log) Verbose(format string, v ...interface{}) {
