@@ -73,6 +73,15 @@ func (l *Log) SetColorPrefix() {
 	}
 }
 
+func (l *Log) SetNoPrefix() {
+	l.stdVar.SetPrefix("")
+	l.infoVar.SetPrefix("")
+	l.warningVar.SetPrefix("")
+	l.debugVar.SetPrefix("")
+	l.errorVar.SetPrefix("")
+	l.panicVar.SetPrefix("")
+}
+
 func (l *Log) SetOutput(stdOut, stdErr io.Writer) {
 	l.stdVar.SetOutput(stdOut)
 	l.infoVar.SetOutput(stdOut)
